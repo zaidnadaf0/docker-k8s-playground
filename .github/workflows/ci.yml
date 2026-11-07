@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm ci --no-audit --no-fund
+
+      - name: Run tests
+        working-directory: app
+        run: npm test
+
+  docker:
+    name: Docker build + smoke test
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build image
+        run: docker build -t k8s-playground:ci ./app
+
+      - name: Run container and assert /health responds
+        run: |
+          docker run -d --name app -p 3000:3000 k8s-playground:ci
+          ok=0
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:3000/health > /dev/null; then ok=1; break; fi
+            sleep 1
+          done
+          echo "--- container logs ---"
+          docker logs app
+          docker rm -f app > /dev/null
+          [ "$ok" = "1" ]
+
+  compose:
+    name: Validate docker-compose
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: docker compose config
+        run: docker compose config -q
+
+  manifests:
+    name: Validate Kubernetes manifests
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: kubeconform strict
+        run: |
+          docker run --rm -v "$PWD/k8s:/manifests" ghcr.io/yannh/kubeconform:latest \
+            -strict -summary /manifests
