@@ -1,0 +1,12 @@
+{
+  "name": "k8s-playground-app",
+  "version": "1.0.0",
+  "description": "Minimal Node.js server for Docker and Kubernetes practice",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
