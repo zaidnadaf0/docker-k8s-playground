@@ -4,9 +4,10 @@
   "description": "Minimal Node.js server for Docker and Kubernetes practice",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test server.test.js"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

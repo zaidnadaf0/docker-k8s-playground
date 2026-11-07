@@ -3,15 +3,16 @@ const http = require('http');
 const PORT = process.env.PORT || 3000;
 const HOSTNAME = process.env.HOSTNAME || 'unknown';
 
-const server = http.createServer((req, res) => {
-  if (req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', hostname: HOSTNAME }));
-    return;
-  }
+function createServer() {
+  return http.createServer((req, res) => {
+    if (req.url === '/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', hostname: HOSTNAME }));
+      return;
+    }
 
-  res.writeHead(200, { 'Content-Type': 'text/html' });
-  res.end(`
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(`
     <html>
       <head><title>K8s Playground</title></head>
       <body style="font-family:sans-serif;text-align:center;padding:50px">
@@ -23,8 +24,18 @@ const server = http.createServer((req, res) => {
       </body>
     </html>
   `);
-});
+  });
+}
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} (hostname: ${HOSTNAME})`);
-});
+const server = createServer();
+
+// Bind a port only when executed directly. Importing this module (the test
+// suite does) must not open a socket: a listening server is an open handle
+// that prevents the node:test process from exiting.
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT} (hostname: ${HOSTNAME})`);
+  });
+}
+
+module.exports = { server, createServer };

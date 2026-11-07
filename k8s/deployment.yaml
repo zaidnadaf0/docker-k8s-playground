@@ -6,6 +6,12 @@ metadata:
     app: k8s-playground
 spec:
   replicas: 3
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: k8s-playground
@@ -14,15 +20,25 @@ spec:
       labels:
         app: k8s-playground
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
         - name: app
           image: k8s-playground:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 3000
+            - name: http
+              containerPort: 3000
           env:
             - name: PORT
               value: "3000"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           resources:
             requests:
               memory: "64Mi"
@@ -33,12 +49,16 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 3000
+              port: http
             initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /health
-              port: 3000
+              port: http
             initialDelaySeconds: 3
             periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
